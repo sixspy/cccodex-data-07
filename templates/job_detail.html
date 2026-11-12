@@ -4,17 +4,86 @@
 <p><a href="{{ url_for('jobs.list_jobs') }}">← 返回列表</a></p>
 <section class="card">
   <h1>{{ job.name }}</h1>
-  <p>种子 <code>{{ job.seed_path }}</code> · 状态 <span class="tag {{ job.status }}">{{ job.status }}</span></p>
-  {% if job.status == 'draft' %}
-  <form method="post" action="{{ url_for('jobs.run_job_view', job_id=job.id) }}">
-    <button type="submit">运行采集（同步）</button>
-  </form>
-  {% elif job.status == 'done' %}
-  <p class="muted">已完成于 {{ job.finished_at or '—' }}</p>
-  {% endif %}
+  <p>种子 <code>{{ job.seed_path }}</code> · 状态
+    <span class="tag {{ job.status }}">{{ job_status_labels.get(job.status, job.status) }}</span>
+    <span class="muted">（{{ job.status }}）</span>
+  </p>
+  <p class="muted">
+    三道工序依次为：取回 → 修整 → 入账{% if job.status == 'done' %}，本次任务已结束（{{ job.finished_at }}）{% endif %}。
+    每道工序各自留下进度；前一道没做完，后一道的按钮不可用，后台同样拒绝。
+  </p>
 </section>
+
+<section class="stages">
+  {% for s in stages %}
+  <article class="card stage {{ s.state }}">
+    <header class="stage-head">
+      <h2><span class="step-no">{{ loop.index }}</span> {{ s.label }}</h2>
+      <span class="tag {{ s.state }}">{{ s.state_label }}</span>
+    </header>
+
+    <p class="muted">{{ s.detail }}</p>
+
+    {% if s.reason %}
+    <p class="reason"><strong>没做成的缘故：</strong>{{ s.reason }}</p>
+    {% endif %}
+
+    <p class="muted hint">{{ s.hint }}</p>
+
+    {% if s.can_run %}
+    <form method="post" action="{{ url_for('jobs.run_stage_view', job_id=job.id, stage=s.key) }}">
+      <button type="submit" class="{{ 'resume' if s.resume else '' }}">{{ s.button_label }}</button>
+    </form>
+    {% elif s.state == 'done' %}
+    <form><button type="button" disabled>已完成（{{ s.finished_at or '—' }}）</button></form>
+    {% elif s.state == 'running' %}
+    <form><button type="button" disabled>正在执行，请稍后再试</button></form>
+    {% else %}
+    <form>
+      <button type="button" disabled title="{{ s.hint }}">{{ s.button_label }}</button>
+    </form>
+    {% endif %}
+
+    {% if s.rows_total or s.rows_ok or s.rows_blocked %}
+    <p class="muted counts">
+      计数：总数 {{ s.rows_total }} · 通过 {{ s.rows_ok }} · 停在筐中 {{ s.rows_blocked }}
+    </p>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+
 <section class="card">
-  <h2>落库记录</h2>
+  <h2>中转筐（取回的原文行）</h2>
+  <p class="muted">
+    共 {{ counts.basket_total }} 行 · 已放行 {{ counts.released }} 行 ·
+    停筐 {{ counts.blocked }} 行（其中重复题名 {{ counts.duplicates }} 行）
+  </p>
+  <table>
+    <thead><tr><th>SKU</th><th>原文题名</th><th>修整后</th><th>状态</th><th>缘故</th></tr></thead>
+    <tbody>
+      {% for row in basket %}
+      <tr>
+        <td><code>{{ row.sku }}</code></td>
+        <td><code>{{ row.raw_title }}</code></td>
+        <td>{{ row.title if row.title is not none else '—' }}</td>
+        <td>
+          <span class="tag {{ 'done' if row.status == 'released' else ('failed' if row.status == 'rejected' else 'pending') }}">
+            {% if row.status == 'released' %}已放行{% elif row.status == 'rejected' %}停在中转筐{% else %}待修整{% endif %}
+          </span>
+        </td>
+        <td class="muted">{{ row.reason or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">中转筐还空着，先执行「取回」</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>入账册</h2>
+  <p class="muted">共 {{ counts.ledger }} 条；只收修整工序已放行的行。</p>
   <table>
     <thead><tr><th>item_key</th><th>标题</th><th>时间</th></tr></thead>
     <tbody>
@@ -25,7 +94,7 @@
         <td>{{ r.fetched_at }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="3" class="muted">尚无记录</td></tr>
+      <tr><td colspan="3" class="muted">入账册还是空的</td></tr>
       {% endfor %}
     </tbody>
   </table>

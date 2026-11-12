@@ -12,6 +12,12 @@ CATALOGS = {
         {"sku": "B-101", "title": "泵站运行日报"},
         {"sku": "B-102", "title": "雨污分流抽检单"},
     ],
+    # 演练修整：题名两端带空白，且有一行抹完不足四个字。
+    "/mock/catalog/gamma": [
+        {"sku": "G-201", "title": "  泵房值守记录  "},
+        {"sku": "G-202", "title": "  巡检  "},
+        {"sku": "G-203", "title": " 闸门开度登记表 "},
+    ],
 }
 
 
@@ -46,5 +52,6 @@ def parse_catalog_html(html: str, seed_path: str) -> list[dict]:
     )
     out = []
     for sku, title in pattern.findall(html):
-        out.append({"sku": sku, "title": title.strip(), "seed_path": seed_path})
+        # 保留原文（含两端空白），由修整工序负责抹掉；取回阶段不改原文。
+        out.append({"sku": sku, "title": title, "seed_path": seed_path})
     return out

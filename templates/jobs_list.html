@@ -19,7 +19,7 @@
   <table>
     <thead>
       <tr>
-        <th>ID</th><th>名称</th><th>种子</th><th>状态</th><th>记录数</th><th></th>
+        <th>ID</th><th>名称</th><th>种子</th><th>状态</th><th>入账条数</th><th></th>
       </tr>
     </thead>
     <tbody>
@@ -28,7 +28,7 @@
         <td>{{ j.id }}</td>
         <td>{{ j.name }}</td>
         <td><code>{{ j.seed_path }}</code></td>
-        <td><span class="tag {{ j.status }}">{{ j.status }}</span></td>
+        <td><span class="tag {{ j.status }}">{{ job_status_labels.get(j.status, j.status) }}</span></td>
         <td>{{ counts.get(j.id, 0) }}</td>
         <td><a href="{{ url_for('jobs.detail', job_id=j.id) }}">详情</a></td>
       </tr>
@@ -42,5 +42,7 @@
   <a href="{{ url_for('mock.catalog', catalog_id='alpha') }}" target="_blank">alpha</a>
   ·
   <a href="{{ url_for('mock.catalog', catalog_id='beta') }}" target="_blank">beta</a>
+  ·
+  <a href="{{ url_for('mock.catalog', catalog_id='gamma') }}" target="_blank">gamma（含短题名）</a>
 </p>
 {% endblock %}

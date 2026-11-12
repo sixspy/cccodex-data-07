@@ -54,6 +54,35 @@ def init_db(app):
                 fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
                 UNIQUE(job_id, item_key)
             );
+            -- 每道工序各自的进度：取回、修整、入账。
+            CREATE TABLE IF NOT EXISTS job_stages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id INTEGER NOT NULL REFERENCES crawl_jobs(id) ON DELETE CASCADE,
+                stage TEXT NOT NULL,
+                state TEXT NOT NULL DEFAULT 'pending',
+                reason TEXT,
+                rows_total INTEGER NOT NULL DEFAULT 0,
+                rows_ok INTEGER NOT NULL DEFAULT 0,
+                rows_blocked INTEGER NOT NULL DEFAULT 0,
+                started_at TEXT,
+                finished_at TEXT,
+                UNIQUE(job_id, stage)
+            );
+            -- 中转筐：只放取回的原文行，修整后放行的才进入入账册。
+            CREATE TABLE IF NOT EXISTS staging_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id INTEGER NOT NULL REFERENCES crawl_jobs(id) ON DELETE CASCADE,
+                sku TEXT NOT NULL,
+                raw_title TEXT NOT NULL,
+                payload_json TEXT,
+                title TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                reject_kind TEXT,
+                reason TEXT,
+                fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+                cleaned_at TEXT,
+                UNIQUE(job_id, sku)
+            );
             """
         )
         db.commit()
